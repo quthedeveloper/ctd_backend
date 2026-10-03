@@ -1,7 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
+import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
+import { auth } from "./config/auth.js";
 import { confirmation, pool } from "./config/db.js";
-import { clerkMiddleware } from "@clerk/express";
 import UserAuthRouter from "./routes/users.routes.js";
 import DevicesRouter from "./routes/devices.routes.js";
 
@@ -11,8 +12,26 @@ const PORT = process.env.PORT;
 
 const app = express();
 
+// Better Auth owns /api/auth/* (sign-up, sign-in, sign-out, session, ...)
+// NOTE: Express 5 requires the wildcard to be named (/*splat).
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
 app.use(express.json());
-app.use(clerkMiddleware());
+
+// Session middleware: verifies the Better Auth session and exposes the
+// signed-in user as req.authUser (null when signed out).
+// This replaces clerkMiddleware().
+app.use(async (req, res, next) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+        req.authUser = session?.user ?? null;
+    } catch {
+        req.authUser = null;
+    }
+    next();
+});
 
 // routes
 app.use("/auth/user", UserAuthRouter);
