@@ -78,6 +78,11 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | POST   | /packages         | Create a package                     |
 | GET    | /trials           | List caller's trials (with remaining quota/time) |
 | POST   | /trials           | Claim the free trial `{ device_id? }` |
+| GET    | /subscriptions    | List caller's subscriptions          |
+| GET    | /subscriptions/active | Current active subscription (or null) |
+| POST   | /subscriptions    | Activate a subscription `{ package_id }` |
+| POST   | /subscriptions/:id/suspend | Suspend an active subscription |
+| POST   | /subscriptions/:id/renew   | Renew an expired/suspended subscription |
 
 All endpoints except `/api/auth/*`, `GET /packages` and `GET /packages/:id`
 require a signed-in session (401 otherwise).
@@ -94,11 +99,13 @@ controllers/
   devices.js           # device registration endpoints
   packages.js          # package endpoints
   trials.js            # trial endpoints
+  subscriptions.js     # subscription endpoints
 routes/
   users.routes.js
   devices.routes.js
   packages.routes.js
   trials.routes.js
+  subscriptions.routes.js
 database/
   migrations/          # SQL migrations, run in order
 ```
