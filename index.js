@@ -7,6 +7,7 @@ import UserAuthRouter from "./routes/users.routes.js";
 import DevicesRouter from "./routes/devices.routes.js";
 import PackagesRouter from "./routes/packages.routes.js";
 import TrialsRouter from "./routes/trials.routes.js";
+import SubscriptionsRouter from "./routes/subscriptions.routes.js";
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use("/auth/user", UserAuthRouter);
 app.use("/devices", DevicesRouter);
 app.use("/packages", PackagesRouter);
 app.use("/trials", TrialsRouter);
+app.use("/subscriptions", SubscriptionsRouter);
 const result = await confirmation(pool);
 
 app.listen(PORT, ()=>{
