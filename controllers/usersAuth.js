@@ -1,5 +1,3 @@
-
-
 import { getAuth, clerkClient } from "@clerk/express";
 import { pool } from "../config/db.js";
 
@@ -89,6 +87,57 @@ const userAuth = async(req, res)=> {
     }
 }
 
+// PATCH /auth/user/me
+// Update editable profile fields. Email stays owned by Clerk
+// (changed there, synced via webhook) so it is not editable here.
+const updateMe = async (req, res) => {
+    try {
+        const { userId } = getAuth(req);
 
+        if (!userId) {
+            return res.status(401).json({
+                message: "Unauthorized"
+            });
+        }
+
+        const { full_name, phone } = req.body ?? {};
+
+        if (full_name === undefined && phone === undefined) {
+            return res.status(400).json({
+                message: "Provide full_name and/or phone to update"
+            });
+        }
+
+        const result = await pool.query(
+            `
+            UPDATE users
+            SET full_name = COALESCE($1, full_name),
+                phone = COALESCE($2, phone)
+            WHERE clerk_user_id = $3
+            RETURNING *
+            `,
+            [full_name ?? null, phone ?? null, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "User not found. Call GET /auth/user/me first to sync your profile."
+            });
+        }
+
+        return res.status(200).json({
+            message: "Profile updated",
+            user: result.rows[0]
+        });
+    } catch (error) {
+        console.error("updateMe error:", error);
+
+        return res.status(500).json({
+            message: "Server error"
+        });
+    }
+};
+
+
+export { updateMe };
 export default userAuth;
-
