@@ -5,6 +5,8 @@ import { auth } from "./config/auth.js";
 import { confirmation, pool } from "./config/db.js";
 import UserAuthRouter from "./routes/users.routes.js";
 import DevicesRouter from "./routes/devices.routes.js";
+import PackagesRouter from "./routes/packages.routes.js";
+import TrialsRouter from "./routes/trials.routes.js";
 
 dotenv.config();
 
@@ -36,6 +38,8 @@ app.use(async (req, res, next) => {
 // routes
 app.use("/auth/user", UserAuthRouter);
 app.use("/devices", DevicesRouter);
+app.use("/packages", PackagesRouter);
+app.use("/trials", TrialsRouter);
 const result = await confirmation(pool);
 
 app.listen(PORT, ()=>{
