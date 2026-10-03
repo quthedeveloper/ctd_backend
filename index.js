@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { confirmation, pool } from "./config/db.js";
 import { clerkMiddleware } from "@clerk/express";
 import UserAuthRouter from "./routes/users.routes.js";
+import DevicesRouter from "./routes/devices.routes.js";
 
 dotenv.config();
 
@@ -15,10 +16,10 @@ app.use(clerkMiddleware());
 
 // routes
 app.use("/auth/user", UserAuthRouter);
+app.use("/devices", DevicesRouter);
 const result = await confirmation(pool);
 
 app.listen(PORT, ()=>{
 console.log(`server working at port: ${PORT}`);
 console.log(result)
 });
-
