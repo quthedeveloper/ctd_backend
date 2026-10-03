@@ -73,8 +73,14 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | GET    | /devices          | List caller's devices                |
 | POST   | /devices          | Register device `{ public_key, device_identifier? }` |
 | DELETE | /devices/:id      | Remove one of the caller's devices   |
+| GET    | /packages         | List packages (public)               |
+| GET    | /packages/:id     | Get one package (public)             |
+| POST   | /packages         | Create a package                     |
+| GET    | /trials           | List caller's trials (with remaining quota/time) |
+| POST   | /trials           | Claim the free trial `{ device_id? }` |
 
-All endpoints except `/api/auth/*` require a signed-in session (401 otherwise).
+All endpoints except `/api/auth/*`, `GET /packages` and `GET /packages/:id`
+require a signed-in session (401 otherwise).
 
 ## Project structure
 
@@ -86,9 +92,13 @@ config/
 controllers/
   usersAuth.js         # profile endpoints
   devices.js           # device registration endpoints
+  packages.js          # package endpoints
+  trials.js            # trial endpoints
 routes/
   users.routes.js
   devices.routes.js
+  packages.routes.js
+  trials.routes.js
 database/
   migrations/          # SQL migrations, run in order
 ```
