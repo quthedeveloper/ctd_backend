@@ -12,9 +12,10 @@
   "author": "Bryan Quartey - Papafio && Chucks",
   "license": "ISC",
   "dependencies": {
-    "@clerk/express": "^2.1.73",
+    "better-auth": "^1.6.0",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "kysely": "^0.28.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {
