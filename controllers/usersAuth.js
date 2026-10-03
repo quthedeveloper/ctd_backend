@@ -1,30 +1,29 @@
-import { getAuth, clerkClient } from "@clerk/express";
 import { pool } from "../config/db.js";
 
+// req.authUser is set by the session middleware in index.js
+// (verified Better Auth session, or null when signed out).
 
-const userAuth = async(req, res)=> {
-    try{
-
-        const { userId } = getAuth(req);
-
-        // Make sure the user is authenticated
-        if (!userId) {
+// GET /auth/user/me — return the caller's CTD profile.
+// The CTD row is normally created by the signup hook in config/auth.js;
+// this lazily creates it as a fallback so old sessions never 404.
+const userAuth = async (req, res) => {
+    try {
+        const authUser = req.authUser;
+        if (!authUser) {
             return res.status(401).json({
                 message: "Unauthorized"
             });
         }
 
-        // Check if this Clerk user already exists
         const existingUser = await pool.query(
             `
             SELECT *
             FROM users
-            WHERE clerk_user_id = $1
+            WHERE auth_user_id = $1
             `,
-            [userId]
+            [authUser.id]
         );
 
-        // If user already exists, return them
         if (existingUser.rows.length > 0) {
             return res.status(200).json({
                 message: "User found",
@@ -32,69 +31,39 @@ const userAuth = async(req, res)=> {
             });
         }
 
-        // Get user's information from Clerk
-        const clerkUser = await clerkClient.users.getUser(userId);
-        const firstName = clerkUser.firstName || "";
-        const lastName = clerkUser.lastName || "";
-        const phone = clerkUser.phoneNumbers[0]?.phoneNumber || null;
-        const fullName = `${firstName} ${lastName}`.trim();
-
-        // Find primary email
-        const primaryEmail = clerkUser.emailAddresses.find(
-            email =>
-                email.id === clerkUser.primaryEmailAddressId
-        );
-
-        if (!primaryEmail) {
-            return res.status(400).json({
-                message: "User has no email address"
-            });
-        }
-
-        const email = primaryEmail.emailAddress;
-
-        // Create the user in CTD PostgreSQL
         const newUser = await pool.query(
             `
             INSERT INTO users (
-                clerk_user_id,
+                auth_user_id,
                 full_name,
                 email,
-                phone
+                status
             )
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3, 'active')
             RETURNING *
             `,
-            [
-                userId,
-                fullName,
-                email,
-                phone
-            ]
+            [authUser.id, authUser.name, authUser.email]
         );
 
         return res.status(201).json({
             message: "CTD user created",
             user: newUser.rows[0]
         });
-
-    } catch(error){
-          console.error("User route error:", error);
+    } catch (error) {
+        console.error("User route error:", error);
 
         return res.status(500).json({
             message: "Server error"
         });
     }
-}
+};
 
-// PATCH /auth/user/me
-// Update editable profile fields. Email stays owned by Clerk
-// (changed there, synced via webhook) so it is not editable here.
+// PATCH /auth/user/me — update editable profile fields.
+// Email stays owned by the auth account, so it is not editable here.
 const updateMe = async (req, res) => {
     try {
-        const { userId } = getAuth(req);
-
-        if (!userId) {
+        const authUser = req.authUser;
+        if (!authUser) {
             return res.status(401).json({
                 message: "Unauthorized"
             });
@@ -113,10 +82,10 @@ const updateMe = async (req, res) => {
             UPDATE users
             SET full_name = COALESCE($1, full_name),
                 phone = COALESCE($2, phone)
-            WHERE clerk_user_id = $3
+            WHERE auth_user_id = $3
             RETURNING *
             `,
-            [full_name ?? null, phone ?? null, userId]
+            [full_name ?? null, phone ?? null, authUser.id]
         );
 
         if (result.rows.length === 0) {
@@ -137,7 +106,6 @@ const updateMe = async (req, res) => {
         });
     }
 };
-
 
 export { updateMe };
 export default userAuth;
