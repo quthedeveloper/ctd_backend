@@ -1,15 +1,17 @@
-import { getAuth } from "@clerk/express";
 import { pool } from "../config/db.js";
 
 // WireGuard public keys are 32 bytes -> 44-char base64 ending with '='
 const WIREGUARD_KEY_RE = /^[A-Za-z0-9+/]{43}=$/;
 
-// Resolve the internal users.id from the Clerk user id.
-// Devices link to users.id, not to the Clerk id directly.
-async function getInternalUserId(clerkUserId) {
+// req.authUser is set by the session middleware in index.js
+// (verified Better Auth session, or null when signed out).
+
+// Resolve the internal users.id from the Better Auth user id.
+// Devices link to users.id, not to the auth id directly.
+async function getInternalUserId(authUserId) {
     const r = await pool.query(
-        `SELECT id FROM users WHERE clerk_user_id = $1`,
-        [clerkUserId]
+        `SELECT id FROM users WHERE auth_user_id = $1`,
+        [authUserId]
     );
     return r.rows[0]?.id ?? null;
 }
@@ -18,8 +20,8 @@ async function getInternalUserId(clerkUserId) {
 // Body: { public_key, device_identifier? }
 const registerDevice = async (req, res) => {
     try {
-        const { userId } = getAuth(req);
-        if (!userId) {
+        const authUser = req.authUser;
+        if (!authUser) {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
@@ -31,7 +33,7 @@ const registerDevice = async (req, res) => {
             });
         }
 
-        const internalId = await getInternalUserId(userId);
+        const internalId = await getInternalUserId(authUser.id);
         if (!internalId) {
             return res.status(404).json({
                 message: "User not found. Call GET /auth/user/me first to sync your profile."
@@ -73,12 +75,12 @@ const registerDevice = async (req, res) => {
 // GET /devices
 const listDevices = async (req, res) => {
     try {
-        const { userId } = getAuth(req);
-        if (!userId) {
+        const authUser = req.authUser;
+        if (!authUser) {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const internalId = await getInternalUserId(userId);
+        const internalId = await getInternalUserId(authUser.id);
         if (!internalId) {
             return res.status(404).json({
                 message: "User not found. Call GET /auth/user/me first to sync your profile."
@@ -100,12 +102,12 @@ const listDevices = async (req, res) => {
 // DELETE /devices/:id
 const removeDevice = async (req, res) => {
     try {
-        const { userId } = getAuth(req);
-        if (!userId) {
+        const authUser = req.authUser;
+        if (!authUser) {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const internalId = await getInternalUserId(userId);
+        const internalId = await getInternalUserId(authUser.id);
         if (!internalId) {
             return res.status(404).json({ message: "User not found" });
         }
