@@ -1,6 +1,16 @@
 import express from "express";
 import { gatewayAuth } from "../middleware/gatewayAuth.js";
 import {
+    postCommand,
+    listCommands,
+    ackCommand,
+} from "../controllers/gatewayCommands.js";
+import {
+    listPeers,
+    authorizePeer,
+    revokePeer,
+} from "../controllers/gatewayPeers.js";
+import {
     registerGateway,
     heartbeat,
     listGateways,
@@ -18,5 +28,17 @@ GatewaysRouter.post("/heartbeat", gatewayAuth, heartbeat);
 // Human-facing: user session auth (admin-only in task #11)
 GatewaysRouter.get("/", listGateways);
 GatewaysRouter.get("/:id", getGateway);
+
+// Control plane: queue + inspect commands (operator)
+GatewaysRouter.post("/:id/commands", postCommand);
+GatewaysRouter.get("/:id/commands", listCommands);
+
+// Gateway acks (gateway token auth)
+GatewaysRouter.post("/commands/:messageId/ack", gatewayAuth, ackCommand);
+
+// Peer management (operator)
+GatewaysRouter.get("/:id/peers", listPeers);
+GatewaysRouter.post("/:id/peers", authorizePeer);
+GatewaysRouter.delete("/:id/peers/:peerId", revokePeer);
 
 export default GatewaysRouter;
