@@ -89,6 +89,12 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | POST   | /gateways/heartbeat   | Gateway liveness ping (gateway token auth) |
 | GET    | /gateways             | List gateways with live online state |
 | GET    | /gateways/:id         | Get one gateway |
+| POST   | /gateways/:id/commands | Queue a control command (operator) |
+| GET    | /gateways/:id/commands | List queued/delivered commands |
+| POST   | /gateways/commands/:messageId/ack | Gateway acks a command (gateway auth) |
+| GET    | /gateways/:id/peers   | List WireGuard peers on a gateway |
+| POST   | /gateways/:id/peers   | Authorize a device as a peer `{ device_id }` |
+| DELETE | /gateways/:id/peers/:peerId | Revoke a peer |
 
 All endpoints except `/api/auth/*`, `GET /packages` and `GET /packages/:id`
 require a signed-in session (401 otherwise).
@@ -109,6 +115,8 @@ controllers/
   trials.js            # trial endpoints
   subscriptions.js     # subscription endpoints
   gateways.js            # gateway endpoints
+  gatewayCommands.js     # command queue (enqueue/deliver/ack)
+  gatewayPeers.js        # WireGuard peer management
 routes/
   users.routes.js
   devices.routes.js
