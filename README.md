@@ -77,7 +77,7 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | DELETE | /devices/:id      | Remove one of the caller's devices   |
 | GET    | /packages         | List packages (public)               |
 | GET    | /packages/:id     | Get one package (public)             |
-| POST   | /packages         | Create a package                     |
+| POST   | /packages         | Create a package (admin only)          |
 | GET    | /trials           | List caller's trials (with remaining quota/time) |
 | POST   | /trials           | Claim the free trial `{ device_id? }` |
 | GET    | /subscriptions    | List caller's subscriptions          |
@@ -87,7 +87,7 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | POST   | /subscriptions/:id/renew   | Renew an expired/suspended subscription |
 | POST   | /gateways/register    | Register a gateway (provision-token auth, returns API token once) |
 | POST   | /gateways/heartbeat   | Gateway liveness ping (gateway token auth) |
-| GET    | /gateways             | List gateways with live online state |
+| GET    | /gateways             | List gateways with live online state (admin only) |
 | GET    | /gateways/:id         | Get one gateway |
 | POST   | /gateways/:id/commands | Queue a control command (operator) |
 | GET    | /gateways/:id/commands | List queued/delivered commands |
@@ -103,7 +103,32 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | GET    | /usage/summary        | Totals across my usage records |
 
 All endpoints except `/api/auth/*`, `GET /packages` and `GET /packages/:id`
-require a signed-in session (401 otherwise).
+require a signed-in session (401 otherwise). Endpoints marked "admin only"
+also require the caller's `users.role` to be `admin` (403 otherwise).
+After running migration `006`, promote yourself once:
+
+    UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+
+### Admin APIs (admin only)
+
+| Method | Endpoint               | Purpose                              |
+| ------ | ---------------------- | ------------------------------------ |
+| GET    | /admin/stats           | Dashboard numbers (users, active entitlements, gateways online, traffic) |
+| GET    | /admin/users           | List users                           |
+| GET    | /admin/users/:id       | User detail with devices, subscriptions, trials |
+| PATCH  | /admin/users/:id       | Update account status `{ status }`   |
+| PATCH  | /admin/users/:id/role  | Promote/demote `{ role: 'admin' | 'customer' }` |
+| GET    | /admin/gateways        | List gateways with live online state |
+| DELETE | /admin/gateways/:id    | Remove a gateway and its peers       |
+| PATCH  | /admin/packages/:id    | Update a package                     |
+| DELETE | /admin/packages/:id    | Delete a package                     |
+| GET    | /admin/payments        | List payment records                 |
+| GET    | /admin/audit-logs      | Security/operation history           |
+
+Mutations are written to `audit_logs` (actor, action, resource, metadata).
+
+The operator routes under `/gateways` (list/get, command queue, peer
+management) and `POST /packages` are also admin-only.
 
 ## Project structure
 
@@ -114,6 +139,9 @@ config/
   auth.js              # Better Auth instance (Kysely adapter, hooks)
 middleware/
   gatewayAuth.js       # gateway API token authentication
+  requireAdmin.js      # admin role guard (users.role = 'admin')
+utils/
+  audit.js             # audit_logs helper
 controllers/
   usersAuth.js         # profile endpoints
   devices.js           # device registration endpoints
@@ -125,6 +153,7 @@ controllers/
   gatewayPeers.js        # WireGuard peer management
   sessions.js            # session tracking
   usage.js               # usage ingestion + quota enforcement
+  admin.js               # admin management endpoints
 routes/
   users.routes.js
   devices.routes.js
