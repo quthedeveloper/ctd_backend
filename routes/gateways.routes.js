@@ -1,5 +1,6 @@
 import express from "express";
 import { gatewayAuth } from "../middleware/gatewayAuth.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 import {
     postCommand,
     listCommands,
@@ -31,20 +32,20 @@ GatewaysRouter.post("/heartbeat", gatewayAuth, heartbeat);
 GatewaysRouter.post("/sessions", gatewayAuth, reportSession);
 GatewaysRouter.post("/usage", gatewayAuth, reportUsage);
 
-// Human-facing: user session auth (admin-only in task #11)
-GatewaysRouter.get("/", listGateways);
-GatewaysRouter.get("/:id", getGateway);
+// Human-facing: admin only
+GatewaysRouter.get("/", requireAdmin, listGateways);
+GatewaysRouter.get("/:id", requireAdmin, getGateway);
 
 // Control plane: queue + inspect commands (operator)
-GatewaysRouter.post("/:id/commands", postCommand);
-GatewaysRouter.get("/:id/commands", listCommands);
+GatewaysRouter.post("/:id/commands", requireAdmin, postCommand);
+GatewaysRouter.get("/:id/commands", requireAdmin, listCommands);
 
 // Gateway acks (gateway token auth)
 GatewaysRouter.post("/commands/:messageId/ack", gatewayAuth, ackCommand);
 
 // Peer management (operator)
-GatewaysRouter.get("/:id/peers", listPeers);
-GatewaysRouter.post("/:id/peers", authorizePeer);
-GatewaysRouter.delete("/:id/peers/:peerId", revokePeer);
+GatewaysRouter.get("/:id/peers", requireAdmin, listPeers);
+GatewaysRouter.post("/:id/peers", requireAdmin, authorizePeer);
+GatewaysRouter.delete("/:id/peers/:peerId", requireAdmin, revokePeer);
 
 export default GatewaysRouter;
