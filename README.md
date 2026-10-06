@@ -95,6 +95,12 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | GET    | /gateways/:id/peers   | List WireGuard peers on a gateway |
 | POST   | /gateways/:id/peers   | Authorize a device as a peer `{ device_id }` |
 | DELETE | /gateways/:id/peers/:peerId | Revoke a peer |
+| POST   | /gateways/sessions    | Gateway reports connect/disconnect (gateway auth) |
+| POST   | /gateways/usage       | Gateway posts traffic report (gateway auth) |
+| GET    | /sessions             | List my sessions |
+| GET    | /sessions/active      | My currently active sessions |
+| GET    | /usage                | List my usage records |
+| GET    | /usage/summary        | Totals across my usage records |
 
 All endpoints except `/api/auth/*`, `GET /packages` and `GET /packages/:id`
 require a signed-in session (401 otherwise).
@@ -117,6 +123,8 @@ controllers/
   gateways.js            # gateway endpoints
   gatewayCommands.js     # command queue (enqueue/deliver/ack)
   gatewayPeers.js        # WireGuard peer management
+  sessions.js            # session tracking
+  usage.js               # usage ingestion + quota enforcement
 routes/
   users.routes.js
   devices.routes.js
@@ -124,6 +132,8 @@ routes/
   trials.routes.js
   subscriptions.routes.js
   gateways.routes.js
+  sessions.routes.js
+  usage.routes.js
 database/
   migrations/          # SQL migrations, run in order
 ```
