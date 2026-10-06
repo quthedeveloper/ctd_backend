@@ -21,7 +21,9 @@ plane* — customer Internet traffic never passes through here.
 
 2. Create the database, then run the migrations in order:
    ```bash
-   psql -h <host> -U <user> -d <db> -f database/migrations/002_better_auth.sql
+   for m in database/migrations/*.sql; do
+     psql -h <host> -U <user> -d <db> -f "$m"
+   done
    ```
    (Migration `002` creates the Better Auth tables and renames
    `users.clerk_user_id` → `users.auth_user_id`. It is safe to re-run.)
@@ -83,6 +85,10 @@ Postgres (`user`, `session`, `account`, `verification` tables).
 | POST   | /subscriptions    | Activate a subscription `{ package_id }` |
 | POST   | /subscriptions/:id/suspend | Suspend an active subscription |
 | POST   | /subscriptions/:id/renew   | Renew an expired/suspended subscription |
+| POST   | /gateways/register    | Register a gateway (provision-token auth, returns API token once) |
+| POST   | /gateways/heartbeat   | Gateway liveness ping (gateway token auth) |
+| GET    | /gateways             | List gateways with live online state |
+| GET    | /gateways/:id         | Get one gateway |
 
 All endpoints except `/api/auth/*`, `GET /packages` and `GET /packages/:id`
 require a signed-in session (401 otherwise).
@@ -94,18 +100,22 @@ index.js               # app entry: Better Auth handler, session middleware, rou
 config/
   db.js                # pg Pool + connection check
   auth.js              # Better Auth instance (Kysely adapter, hooks)
+middleware/
+  gatewayAuth.js       # gateway API token authentication
 controllers/
   usersAuth.js         # profile endpoints
   devices.js           # device registration endpoints
   packages.js          # package endpoints
   trials.js            # trial endpoints
   subscriptions.js     # subscription endpoints
+  gateways.js            # gateway endpoints
 routes/
   users.routes.js
   devices.routes.js
   packages.routes.js
   trials.routes.js
   subscriptions.routes.js
+  gateways.routes.js
 database/
   migrations/          # SQL migrations, run in order
 ```
