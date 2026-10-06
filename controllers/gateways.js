@@ -172,4 +172,10 @@ const getGateway = async (req, res) => {
     }
 };
 
-export { registerGateway, heartbeat, listGateways, getGateway };
+export {
+    registerGateway,
+    heartbeat,
+    listGateways,
+    getGateway,
+    decorate as decorateGateway,
+};
