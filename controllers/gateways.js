@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { pool } from "../config/db.js";
+import { deliverPendingCommands } from "./gatewayCommands.js";
 
 // Seconds after the last heartbeat before a gateway reads as offline.
 const HEARTBEAT_TIMEOUT_SECONDS = Number(
@@ -113,12 +114,13 @@ const heartbeat = async (req, res) => {
             [req.gateway.id]
         );
 
+        // Deliver any queued control-plane commands with this heartbeat
+        const commands = await deliverPendingCommands(req.gateway.id);
+
         return res.status(200).json({
             message: "ok",
             gateway_id: req.gateway.id,
-            // Task #9 will attach pending commands here
-            // (AUTHORIZE_PEER, REVOKE_PEER, CONFIG_UPDATE, ...)
-            commands: [],
+            commands,
         });
     } catch (error) {
         console.error("heartbeat error:", error);
