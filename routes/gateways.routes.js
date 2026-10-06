@@ -16,6 +16,8 @@ import {
     listGateways,
     getGateway,
 } from "../controllers/gateways.js";
+import { reportSession } from "../controllers/sessions.js";
+import { reportUsage } from "../controllers/usage.js";
 
 const GatewaysRouter = express.Router();
 
@@ -24,6 +26,10 @@ GatewaysRouter.post("/register", registerGateway);
 
 // Gateway control plane: gateway API token auth
 GatewaysRouter.post("/heartbeat", gatewayAuth, heartbeat);
+
+// Gateway telemetry: session events + usage reports (gateway token auth)
+GatewaysRouter.post("/sessions", gatewayAuth, reportSession);
+GatewaysRouter.post("/usage", gatewayAuth, reportUsage);
 
 // Human-facing: user session auth (admin-only in task #11)
 GatewaysRouter.get("/", listGateways);
