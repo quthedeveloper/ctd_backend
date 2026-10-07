@@ -93,6 +93,15 @@ const authorizePeer = async (req, res) => {
             });
         }
 
+        // unique_gateway_device blocks re-authorizing a device whose old
+        // peer row lingers in a terminal state — clear those first.
+        await pool.query(
+            `DELETE FROM gateway_peers
+             WHERE gateway_id = $1 AND device_id = $2
+               AND status IN ('revoked', 'error', 'inactive')`,
+            [gatewayId, device_id]
+        );
+
         const tunnel_ip = await allocateTunnelIp(gatewayId);
         if (!tunnel_ip) {
             return res.status(507).json({
