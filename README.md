@@ -135,6 +135,37 @@ Mutations are written to `audit_logs` (actor, action, resource, metadata).
 The operator routes under `/gateways` (list/get, command queue, peer
 management) and `POST /packages` are also admin-only.
 
+## Docker
+
+```bash
+# from the repo root, with .env filled in
+docker compose up --build -d
+```
+
+This starts three containers: `api` (this repo), `db` (PostgreSQL 18),
+and `redis` (7). The API container runs `scripts/migrate.js` on startup —
+it waits for Postgres, applies `database/migrations/*.sql` in order, then
+starts node — so a fresh `up` goes from zero to migrated with no manual psql.
+
+- Postgres data persists in the `pgdata` volume across restarts.
+- Redis has no volume on purpose: cache and rate-limit state is ephemeral,
+  and the app fails open without it.
+- `DB_PASSWORD` must be set in `.env` or compose refuses to start.
+- The container listens on 3000 internally; `${PORT}` (default 3000) only
+  changes the published host port.
+
+Useful commands:
+
+```bash
+docker compose logs -f api   # follow API logs
+docker compose ps            # container + health status
+docker compose down          # stop (keeps the pgdata volume)
+docker compose down -v       # stop AND delete the database volume
+```
+
+`docker/` holds the Dockerfile (per the PDF's suggested repo layout);
+`docker-compose.yml` stays at the root so `docker compose up` just works.
+
 ## Redis (optional)
 
 - `REDIS_URL` enables two things: JSON caching of the public package
@@ -149,6 +180,16 @@ management) and `POST /packages` are also admin-only.
   - `POST /gateways/sessions`, `POST /gateways/usage` — 120/min per gateway
 - Exceeded limits return 429 with `X-RateLimit-Limit` /
   `X-RateLimit-Remaining` headers.
+
+## Project structure
+
+```
+docker/
+  Dockerfile           # multi-stage node:22-alpine build
+scripts/
+  migrate.js           # startup migration runner (also: npm run migrate)
+docker-compose.yml     # api + postgres + redis stack
+```
 
 ## Project structure
 
