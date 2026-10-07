@@ -1,11 +1,29 @@
 import { pool } from "../config/db.js";
+import {
+    cacheGet,
+    cacheSet,
+    invalidatePackages,
+    PACKAGES_LIST_KEY,
+    packageKey,
+    CACHE_PACKAGES_TTL_SECONDS,
+} from "../utils/cache.js";
 
 // GET /packages — public: list all packages (so visitors can see plans
-// before signing up)
+// before signing up). Cached in Redis; invalidated on any package mutation.
 const listPackages = async (req, res) => {
     try {
+        const cached = await cacheGet(PACKAGES_LIST_KEY);
+        if (cached) {
+            return res.status(200).json({ packages: cached });
+        }
+
         const result = await pool.query(
             `SELECT * FROM packages ORDER BY price ASC`
+        );
+        await cacheSet(
+            PACKAGES_LIST_KEY,
+            result.rows,
+            CACHE_PACKAGES_TTL_SECONDS
         );
         return res.status(200).json({ packages: result.rows });
     } catch (error) {
@@ -17,6 +35,11 @@ const listPackages = async (req, res) => {
 // GET /packages/:id — public: single package
 const getPackage = async (req, res) => {
     try {
+        const cached = await cacheGet(packageKey(req.params.id));
+        if (cached) {
+            return res.status(200).json({ package: cached });
+        }
+
         const result = await pool.query(
             `SELECT * FROM packages WHERE id = $1`,
             [req.params.id]
@@ -24,6 +47,11 @@ const getPackage = async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ message: "Package not found" });
         }
+        await cacheSet(
+            packageKey(req.params.id),
+            result.rows[0],
+            CACHE_PACKAGES_TTL_SECONDS
+        );
         return res.status(200).json({ package: result.rows[0] });
     } catch (error) {
         console.error("getPackage error:", error);
@@ -31,9 +59,7 @@ const getPackage = async (req, res) => {
     }
 };
 
-// POST /packages — create a package.
-// NOTE: any signed-in user can call this for now; restrict to admins
-// when the Admin APIs land (task #11).
+// POST /packages — create a package (admin only, see packages.routes.js).
 const createPackage = async (req, res) => {
     try {
         if (!req.authUser) {
@@ -85,6 +111,8 @@ const createPackage = async (req, res) => {
                 speed_policy ?? null,
             ]
         );
+
+        await invalidatePackages();
 
         return res.status(201).json({
             message: "Package created",
