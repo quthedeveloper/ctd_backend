@@ -77,7 +77,7 @@ const updateUserStatus = async (req, res) => {
         }
 
         await auditLog({
-            actor: req.authUser.email,
+            actor: req.adminId,
             action: "user.status.update",
             resource: `users:${req.params.id}`,
             metadata: { status },
@@ -123,7 +123,7 @@ const updateUserRole = async (req, res) => {
         );
 
         await auditLog({
-            actor: req.authUser.email,
+            actor: req.adminId,
             action: "user.role.update",
             resource: `users:${req.params.id}`,
             metadata: { role },
@@ -171,7 +171,7 @@ const deleteGateway = async (req, res) => {
         await pool.query(`DELETE FROM gateways WHERE id = $1`, [req.params.id]);
 
         await auditLog({
-            actor: req.authUser.email,
+            actor: req.adminId,
             action: "gateway.delete",
             resource: `gateways:${req.params.id}`,
             metadata: { name: gw.rows[0].name },
@@ -180,6 +180,11 @@ const deleteGateway = async (req, res) => {
         return res.status(200).json({ message: "Gateway deleted" });
     } catch (error) {
         console.error("admin deleteGateway error:", error);
+        if (error.code === "23503") {
+            return res.status(409).json({
+                message: "Gateway has sessions or usage records and cannot be deleted"
+            });
+        }
         return res.status(500).json({ message: "Server error" });
     }
 };
@@ -233,7 +238,7 @@ const updatePackage = async (req, res) => {
         await invalidatePackages(req.params.id);
 
         await auditLog({
-            actor: req.authUser.email,
+            actor: req.adminId,
             action: "package.update",
             resource: `packages:${req.params.id}`,
             metadata: req.body,
@@ -263,7 +268,7 @@ const deletePackage = async (req, res) => {
         await invalidatePackages(req.params.id);
 
         await auditLog({
-            actor: req.authUser.email,
+            actor: req.adminId,
             action: "package.delete",
             resource: `packages:${req.params.id}`,
             metadata: { name: result.rows[0].name },
@@ -272,6 +277,11 @@ const deletePackage = async (req, res) => {
         return res.status(200).json({ message: "Package deleted" });
     } catch (error) {
         console.error("admin deletePackage error:", error);
+        if (error.code === "23503") {
+            return res.status(409).json({
+                message: "Package has subscriptions and cannot be deleted"
+            });
+        }
         return res.status(500).json({ message: "Server error" });
     }
 };
