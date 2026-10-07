@@ -11,13 +11,16 @@ const requireAdmin = async (req, res, next) => {
         }
 
         const result = await pool.query(
-            `SELECT role FROM users WHERE auth_user_id = $1`,
+            `SELECT id, role FROM users WHERE auth_user_id = $1`,
             [req.authUser.id]
         );
 
         if (result.rows.length === 0 || result.rows[0].role !== "admin") {
             return res.status(403).json({ message: "Forbidden: admins only" });
         }
+
+        // Internal users.id (uuid) for audit_logs.actor, which is a uuid column
+        req.adminId = result.rows[0].id;
 
         next();
     } catch (error) {
