@@ -1,4 +1,5 @@
 import { pool } from "../config/db.js";
+import { enqueueCommand } from "./gatewayCommands.js";
 
 // WireGuard public keys are 32 bytes -> 44-char base64 ending with '='
 const WIREGUARD_KEY_RE = /^[A-Za-z0-9+/]{43}=$/;
@@ -110,6 +111,31 @@ const removeDevice = async (req, res) => {
         const internalId = await getInternalUserId(authUser.id);
         if (!internalId) {
             return res.status(404).json({ message: "User not found" });
+        }
+
+        // Tell each gateway to drop this device's live tunnels first.
+        // (Peer/sessions rows cascade on device delete, but the gateway
+        // only learns about it via REVOKE_PEER.)
+        const peers = await pool.query(
+            `SELECT gp.id, gp.gateway_id, gp.public_key, gp.tunnel_ip
+             FROM gateway_peers gp
+             JOIN devices d ON d.id = gp.device_id
+             WHERE gp.device_id = $1 AND d.user_id = $2
+               AND gp.status IN ('pending', 'active')`,
+            [req.params.id, internalId]
+        );
+        for (const p of peers.rows) {
+            await pool.query(
+                `UPDATE gateway_peers SET status = 'revoking' WHERE id = $1`,
+                [p.id]
+            );
+            await enqueueCommand(p.gateway_id, "REVOKE_PEER", {
+                peer_id: p.id,
+                device_id: req.params.id,
+                public_key: p.public_key,
+                tunnel_ip: p.tunnel_ip,
+                reason: "device_removed",
+            });
         }
 
         const result = await pool.query(
