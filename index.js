@@ -12,6 +12,8 @@ import GatewaysRouter from "./routes/gateways.routes.js";
 import SessionsRouter from "./routes/sessions.routes.js";
 import UsageRouter from "./routes/usage.routes.js";
 import AdminRouter from "./routes/admin.routes.js";
+import { initRedis } from "./config/redis.js";
+import { rateLimit, perIp } from "./middleware/rateLimit.js";
 
 dotenv.config();
 
@@ -21,9 +23,17 @@ const app = express();
 
 // Better Auth owns /api/auth/* (sign-up, sign-in, sign-out, session, ...)
 // NOTE: Express 5 requires the wildcard to be named (/*splat).
-app.all("/api/auth/*splat", toNodeHandler(auth));
+// Auth endpoints are brute-force sensitive: 20 requests/min per IP
+app.all(
+    "/api/auth/*splat",
+    rateLimit({ key: perIp, limit: 20, windowSeconds: 60 }),
+    toNodeHandler(auth)
+);
 
 app.use(express.json());
+
+// Optional: enables Redis caching + distributed rate limits
+initRedis();
 
 // Session middleware: verifies the Better Auth session and exposes the
 // signed-in user as req.authUser (null when signed out).
