@@ -1,5 +1,6 @@
 import { pool } from "../config/db.js";
 import { auditLog } from "../utils/audit.js";
+import { invalidatePackages } from "../utils/cache.js";
 import { decorateGateway } from "./gateways.js";
 
 const HEARTBEAT_TIMEOUT_SECONDS = Number(
@@ -229,6 +230,8 @@ const updatePackage = async (req, res) => {
             return res.status(404).json({ message: "Package not found" });
         }
 
+        await invalidatePackages(req.params.id);
+
         await auditLog({
             actor: req.authUser.email,
             action: "package.update",
@@ -256,6 +259,8 @@ const deletePackage = async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ message: "Package not found" });
         }
+
+        await invalidatePackages(req.params.id);
 
         await auditLog({
             actor: req.authUser.email,
