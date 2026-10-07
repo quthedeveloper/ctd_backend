@@ -1,6 +1,7 @@
 import express from "express";
 import { gatewayAuth } from "../middleware/gatewayAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
+import { rateLimit, perIp, perGateway } from "../middleware/rateLimit.js";
 import {
     postCommand,
     listCommands,
@@ -23,14 +24,33 @@ import { reportUsage } from "../controllers/usage.js";
 const GatewaysRouter = express.Router();
 
 // Bootstrap: provision-token auth (see controller), NOT a user session
-GatewaysRouter.post("/register", registerGateway);
+GatewaysRouter.post(
+    "/register",
+    rateLimit({ key: perIp, limit: 10, windowSeconds: 60 }),
+    registerGateway
+);
 
 // Gateway control plane: gateway API token auth
-GatewaysRouter.post("/heartbeat", gatewayAuth, heartbeat);
+GatewaysRouter.post(
+    "/heartbeat",
+    gatewayAuth,
+    rateLimit({ key: perGateway, limit: 30, windowSeconds: 60 }),
+    heartbeat
+);
 
 // Gateway telemetry: session events + usage reports (gateway token auth)
-GatewaysRouter.post("/sessions", gatewayAuth, reportSession);
-GatewaysRouter.post("/usage", gatewayAuth, reportUsage);
+GatewaysRouter.post(
+    "/sessions",
+    gatewayAuth,
+    rateLimit({ key: perGateway, limit: 120, windowSeconds: 60 }),
+    reportSession
+);
+GatewaysRouter.post(
+    "/usage",
+    gatewayAuth,
+    rateLimit({ key: perGateway, limit: 120, windowSeconds: 60 }),
+    reportUsage
+);
 
 // Human-facing: admin only
 GatewaysRouter.get("/", requireAdmin, listGateways);
