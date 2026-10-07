@@ -41,6 +41,19 @@ const reportUsage = async (req, res) => {
             });
         }
 
+        // usage_records.period_start/period_end are NOT NULL with a
+        // period_end > period_start check — reject bad input as 400
+        // instead of letting Postgres throw a 500.
+        if (
+            !period_start || !period_end ||
+            Number.isNaN(Date.parse(period_start)) ||
+            Number.isNaN(Date.parse(period_end))
+        ) {
+            return res.status(400).json({
+                message: "period_start and period_end are required and must be valid timestamps"
+            });
+        }
+
         // Idempotency: gateways retry on network failure — never double-count
         if (report_id) {
             const dup = await pool.query(
@@ -97,8 +110,8 @@ const reportUsage = async (req, res) => {
                 session.id,
                 peer.user_id,
                 req.gateway.id,
-                period_start ?? null,
-                period_end ?? null,
+                period_start,
+                period_end,
                 rx,
                 tx,
                 report_id ?? null,
