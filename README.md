@@ -25,8 +25,21 @@ plane* — customer Internet traffic never passes through here.
      psql -h <host> -U <user> -d <db> -f "$m"
    done
    ```
-   (Migration `002` creates the Better Auth tables and renames
-   `users.clerk_user_id` → `users.auth_user_id`. It is safe to re-run.)
+   Migrations and what they do (`001`–`007`, all safe to re-run):
+   - `001` — base schema snapshot: the 13 business tables, indexes and
+     foreign keys. (The Better Auth tables and `gateway_commands` are
+     created by `002` and `004` respectively.)
+   - `002` — creates the Better Auth tables and renames
+     `users.clerk_user_id` → `users.auth_user_id`.
+   - `003` — `gateways.api_token_hash` for gateway authentication.
+   - `004` — `gateway_commands` queue table.
+   - `005` — `usage_records.report_id` idempotency key.
+   - `006` — `users.role` for admin access.
+   - `007` — schema alignment: `devices.device_identifier` and
+     `trials.device_id` become nullable (the API treats them as optional),
+     and the `gateway_peers` / `sessions` / `subscriptions` status checks
+     are widened to the values the API actually writes
+     (`pending`/`revoking`/`error`, `closed`, `suspended`).
 
 3. Copy the example env file and fill it in:
    ```bash
