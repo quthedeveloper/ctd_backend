@@ -32,6 +32,11 @@ plane* — customer Internet traffic never passes through here.
    ```bash
    cp .env.example .env
    ```
+   (Optional) Start Redis for package caching and rate limits:
+   ```bash
+   docker run -d -p 6379:6379 redis:7
+   ```
+   The app works without Redis; it logs a notice and degrades gracefully.
    - `BETTER_AUTH_SECRET` — generate with `openssl rand -base64 32`
    - `BETTER_AUTH_URL` — public URL of this API (e.g. `http://localhost:3000`)
    - `FRONTEND_URL` — your app's origin (comma-separated if several); required
@@ -129,6 +134,21 @@ Mutations are written to `audit_logs` (actor, action, resource, metadata).
 
 The operator routes under `/gateways` (list/get, command queue, peer
 management) and `POST /packages` are also admin-only.
+
+## Redis (optional)
+
+- `REDIS_URL` enables two things: JSON caching of the public package
+  endpoints (`GET /packages`, `GET /packages/:id`, 5-minute TTL by default
+  via `CACHE_PACKAGES_TTL_SECONDS`) and Redis-backed rate limits.
+- Cache is invalidated on every package create/update/delete, so reads
+  never go stale.
+- Rate limits (all fail open if Redis is down):
+  - `/api/auth/*` — 20/min per IP (brute-force protection)
+  - `POST /gateways/register` — 10/min per IP (provision-token protection)
+  - `POST /gateways/heartbeat` — 30/min per gateway
+  - `POST /gateways/sessions`, `POST /gateways/usage` — 120/min per gateway
+- Exceeded limits return 429 with `X-RateLimit-Limit` /
+  `X-RateLimit-Remaining` headers.
 
 ## Project structure
 
