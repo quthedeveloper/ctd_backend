@@ -35,6 +35,12 @@ app.use(express.json());
 // Optional: enables Redis caching + distributed rate limits
 initRedis();
 
+// Health probe for Docker HEALTHCHECK / orchestrators.
+// Deliberately before the session middleware: no auth, no session DB hit.
+app.get("/health", (req, res) => {
+    res.status(200).json({ ok: true });
+});
+
 // Session middleware: verifies the Better Auth session and exposes the
 // signed-in user as req.authUser (null when signed out).
 // This replaces clerkMiddleware().
