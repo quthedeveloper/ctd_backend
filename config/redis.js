@@ -5,6 +5,7 @@ import Redis from "ioredis";
 // fails open (allows the request) when Redis is unreachable.
 let redis = null;
 let redisReady = false;
+let redisErrorLogged = false;
 
 const initRedis = () => {
     if (!process.env.REDIS_URL) {
@@ -21,6 +22,7 @@ const initRedis = () => {
 
     redis.on("ready", () => {
         redisReady = true;
+        redisErrorLogged = false;
         console.log("Redis: connected");
     });
     redis.on("end", () => {
@@ -28,7 +30,12 @@ const initRedis = () => {
         console.log("Redis: connection lost — failing open");
     });
     redis.on("error", (error) => {
-        console.error("Redis error:", error.message);
+        // ioredis retries forever while Redis is down — log the first
+        // failure only, then stay quiet (the app fails open regardless).
+        if (!redisErrorLogged) {
+            redisErrorLogged = true;
+            console.error("Redis error:", error.message, "— failing open");
+        }
     });
 };
 
