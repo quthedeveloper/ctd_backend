@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { kyselyAdapter } from "better-auth/adapters/kysely";
+import { kyselyAdapter } from "@better-auth/kysely-adapter";
 import { Kysely, PostgresDialect } from "kysely";
 import { pool } from "./db.js";
 
