@@ -25,7 +25,7 @@ plane* — customer Internet traffic never passes through here.
      psql -h <host> -U <user> -d <db> -f "$m"
    done
    ```
-   Migrations and what they do (`001`–`007`, all safe to re-run):
+   Migrations and what they do (`001`–`008`, all safe to re-run):
    - `001` — base schema snapshot: the 13 business tables, indexes and
      foreign keys. (The Better Auth tables and `gateway_commands` are
      created by `002` and `004` respectively.)
@@ -40,6 +40,9 @@ plane* — customer Internet traffic never passes through here.
      and the `gateway_peers` / `sessions` / `subscriptions` status checks
      are widened to the values the API actually writes
      (`pending`/`revoking`/`error`, `closed`, `suspended`).
+   - `008` — adds the OAuth token columns better-auth 1.7.x expects on
+     `account` (`accessToken`, `refreshToken`, `idToken`,
+     `accessTokenExpiresAt`, `refreshTokenExpiresAt`, `scope`).
 
 3. Copy the example env file and fill it in:
    ```bash
